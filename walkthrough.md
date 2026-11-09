@@ -91,7 +91,7 @@ sign_sense/
 │   └── app.py                # Streamlit UI
 ├── tests/
 │   └── test_api.py
-├── data/                     # created automatically (gitignored)
+├── data/                     # gtsrb/ is gitignored, samples/ is tracked
 ├── models/                   # trained checkpoint
 └── reports/                  # metrics and plots
 ```
@@ -151,10 +151,13 @@ testpaths = ["tests"]
 ```text
 .venv/
 __pycache__/
-data/
+data/*
+!data/samples/
 .pytest_cache/
 .DS_Store
 ```
+
+`data/*` with the `!data/samples/` exception keeps the 700 MB dataset out of git but tracks the 86 small demo images, so a fresh clone can run the demo without downloading GTSRB.
 
 ---
 
@@ -667,11 +670,14 @@ if __name__ == "__main__":
 
 ### `ml/export_samples.py`
 
-This saves real test-set images that the model has never seen, with the true class in the filename (for example `007_class14.png`). The UI uses them for the sample picker and the drive simulation, and reads the filename to show whether each prediction was correct.
+This saves real test-set images that the model has never seen, with the true class in the filename (for example `028_class14.png`). The UI uses them for the sample picker and the drive simulation, and reads the filename to show whether each prediction was correct.
+
+The sample is **stratified**: two images of every class, 86 in total. A plain random sample of 86 covers only about 32 of the 43 classes, which leaves some signs missing from the demo.
 
 ```python
 import argparse
 import random
+from collections import defaultdict
 
 from torchvision import datasets
 
@@ -680,7 +686,7 @@ from ml.config import DATA_DIR, SAMPLES_DIR
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export GTSRB test images for the demo")
-    parser.add_argument("--n", type=int, default=86)
+    parser.add_argument("--per-class", type=int, default=2)
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args()
 
@@ -689,11 +695,16 @@ def main() -> None:
     for old in SAMPLES_DIR.glob("*.png"):
         old.unlink()
 
-    indices = random.Random(args.seed).sample(range(len(test_ds)), args.n)
+    by_class = defaultdict(list)
+    for idx, (_, label) in enumerate(test_ds._samples):
+        by_class[label].append(idx)
+
+    rng = random.Random(args.seed)
+    indices = [idx for label in sorted(by_class) for idx in rng.sample(by_class[label], args.per_class)]
     for i, idx in enumerate(indices):
         image, label = test_ds[idx]
         image.save(SAMPLES_DIR / f"{i:03d}_class{label:02d}.png")
-    print(f"Saved {args.n} samples to {SAMPLES_DIR}")
+    print(f"Saved {len(indices)} samples ({args.per_class} per class) to {SAMPLES_DIR}")
 
 
 if __name__ == "__main__":
@@ -705,7 +716,29 @@ python -m ml.evaluate
 python -m ml.export_samples
 ```
 
-A typical result for this model is **97–99% test accuracy**. Look at `reports/confusion_matrix.png`: the errors usually cluster among similar-looking speed limits (30/50/80), which is a good point to raise in a presentation.
+A typical result for this model is **97–99% test accuracy**. Evaluating on all 12,630 test images takes about 2 minutes on MPS.
+
+Reference run:
+
+```
+Test accuracy: 0.9880  Macro F1: 0.9821
+  weakest: Dangerous curve to the left                   F1 0.896
+  weakest: Double curve                                  F1 0.904
+  weakest: End of no passing                             F1 0.938
+  weakest: Roundabout mandatory                          F1 0.946
+  weakest: Bumpy road                                    F1 0.952
+```
+
+The gap between 99.96% validation and 98.8% test accuracy is the track leakage from Phase 1 showing up. Treat 98.8% as the real number.
+
+In `reports/confusion_matrix.png`, almost every mistake is between **warning signs that share the same red triangle** and differ only in a small black pictogram, which becomes a few pixels at 48×48:
+
+- Double curve (21) is predicted as Dangerous curve left (19)
+- Bumpy road (22) is predicted as Road work (25)
+- End of no passing (41) is predicted as No passing (9) or Vehicles over 3.5 t prohibited (16)
+- Beware of ice/snow (30) is predicted as Right-of-way (11)
+
+Speed limits are nearly error-free. This makes a good presentation point: errors come from lost pictogram detail, so a higher input resolution (64×64) or class-weighted training would be the next improvement.
 
 ---
 
@@ -1394,7 +1427,7 @@ streamlit run frontend/app.py
 
 ### A 3-minute demo script
 
-1. **Model report tab.** "We trained a 1.5M-parameter CNN on 26k German traffic sign images. It reaches about 98% on 12.6k unseen test images." Show the confusion matrix and point out the speed-limit confusions.
+1. **Model report tab.** "We trained a 1.5M-parameter CNN on 26k German traffic sign images. It reaches 98.8% on 12.6k unseen test images." Show the confusion matrix and point out that the few errors are between look-alike triangular warning signs.
 2. **Classify tab, Test-set sample.** Pick a Stop sign. Show the label, confidence, top-k bars, and the vehicle action.
 3. **Classify tab, Upload.** Use a sign photo from Google Images, cropped tightly around the sign. Then try a non-sign image (a cat, say) and show the low-confidence warning. "The car refuses to act on uncertain inputs."
 4. **Classify tab, Camera.** Hold up a printed sign or a phone screen showing one.
@@ -1438,8 +1471,8 @@ Roughly in order of how much they add to the project:
 - [x] Phase 0: venv created, dependencies installed, MPS/CUDA detected
 - [x] Phase 1: GTSRB downloads, and a batch from the dataloader has shape `[128, 3, 48, 48]`
 - [x] Phase 2: `models/sign_cnn.pt` saved, validation accuracy above 98%
-- [ ] Phase 3: `reports/metrics.json` shows test accuracy of at least 97%, confusion matrix reviewed
-- [ ] Phase 3: `data/samples/` populated
+- [x] Phase 3: `reports/metrics.json` shows test accuracy of at least 97%, confusion matrix reviewed
+- [x] Phase 3: `data/samples/` populated
 - [ ] Phase 4: `/docs` works and `/predict` returns the right label for a sample
 - [ ] Phase 5: all four Streamlit tabs work end to end
 - [ ] Phase 6: `pytest` passes

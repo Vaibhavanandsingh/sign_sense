@@ -1,0 +1,72 @@
+{
+  "test_accuracy": 0.9880443388756928,
+  "macro_f1": 0.9820508159184335,
+  "num_test_images": 12630,
+  "worst_classes": [
+    {
+      "class": "Dangerous curve to the left",
+      "f1": 0.8955223880597015
+    },
+    {
+      "class": "Double curve",
+      "f1": 0.9036144578313253
+    },
+    {
+      "class": "End of no passing",
+      "f1": 0.9380530973451328
+    },
+    {
+      "class": "Roundabout mandatory",
+      "f1": 0.9456521739130435
+    },
+    {
+      "class": "Bumpy road",
+      "f1": 0.9519650655021834
+    }
+  ],
+  "per_class_f1": {
+    "Speed limit (20km/h)": 0.9917355371900827,
+    "Speed limit (30km/h)": 0.9937629937629938,
+    "Speed limit (50km/h)": 0.9933155080213903,
+    "Speed limit (60km/h)": 0.9910514541387024,
+    "Speed limit (70km/h)": 0.992412746585736,
+    "Speed limit (80km/h)": 0.978988326848249,
+    "End of speed limit (80km/h)": 0.9621993127147767,
+    "Speed limit (100km/h)": 0.9977777777777778,
+    "Speed limit (120km/h)": 0.9773755656108597,
+    "No passing": 0.9968847352024922,
+    "No passing for vehicles over 3.5 t": 0.9992418498862775,
+    "Right-of-way at the next intersection": 0.9917355371900827,
+    "Priority road": 0.9897510980966325,
+    "Yield": 0.9903448275862069,
+    "Stop": 0.9981515711645101,
+    "No vehicles": 0.9881235154394299,
+    "Vehicles over 3.5 t prohibited": 0.9868421052631579,
+    "No entry": 0.9986091794158554,
+    "General caution": 0.9806451612903225,
+    "Dangerous curve to the left": 0.8955223880597015,
+    "Dangerous curve to the right": 0.994475138121547,
+    "Double curve": 0.9036144578313253,
+    "Bumpy road": 0.9519650655021834,
+    "Slippery road": 0.9801324503311258,
+    "Road narrows on the right": 0.994413407821229,
+    "Road work": 0.9834368530020704,
+    "Traffic signals": 0.9782608695652174,
+    "Pedestrians": 0.9917355371900827,
+    "Children crossing": 0.9933333333333333,
+    "Bicycles crossing": 0.9775280898876404,
+    "Beware of ice/snow": 0.9655172413793104,
+    "Wild animals crossing": 0.9889705882352942,
+    "End of all speed and passing limits": 1.0,
+    "Turn right ahead": 1.0,
+    "Turn left ahead": 1.0,
+    "Ahead only": 0.998719590268886,
+    "Go straight or right": 0.9795918367346939,
+    "Go straight or left": 0.9917355371900827,
+    "Keep right": 0.9876900796524257,
+    "Keep left": 0.994413407821229,
+    "Roundabout mandatory": 0.9456521739130435,
+    "End of no passing": 0.9380530973451328,
+    "End of no passing for vehicles over 3.5 t": 0.994475138121547
+  }
+}
