@@ -758,16 +758,16 @@ Example `Prediction`:
 
 ```json
 {
-  "filename": "007_class14.png",
+  "filename": "028_class14.png",
   "class_id": 14,
   "label": "Stop",
-  "confidence": 0.9987,
+  "confidence": 0.9992,
   "is_confident": true,
   "category": "stop",
   "action": "Come to a full stop at the line, proceed when clear",
   "speed_limit_kmh": null,
-  "top_k": [{"class_id": 14, "label": "Stop", "confidence": 0.9987}, "..."],
-  "inference_ms": 3.41
+  "top_k": [{"class_id": 14, "label": "Stop", "confidence": 0.9992}, "..."],
+  "inference_ms": 4.18
 }
 ```
 
@@ -1020,8 +1020,23 @@ uvicorn backend.main:app --reload --port 8000
 
 ```bash
 curl http://localhost:8000/health
-curl -F "file=@$(ls data/samples/*.png | head -1)" "http://localhost:8000/predict?top_k=3"
+curl -F "file=@data/samples/028_class14.png" "http://localhost:8000/predict?top_k=3"
+curl -F "files=@data/samples/004_class02.png" -F "files=@data/samples/028_class14.png" \
+     "http://localhost:8000/predict/batch?top_k=1"
 ```
+
+Reference results (MPS):
+
+| Check | Result |
+| --- | --- |
+| `/health` | `{"status":"ok","model_loaded":true,"device":"mps"}` |
+| `/predict` on the Stop sample | `Stop`, confidence 0.9992, action "Come to a full stop…" |
+| `/predict/batch` on all 86 samples | 85/86 correct, about 540 ms of model time in total |
+| Non-image file, empty file, or more than 32 images | `400` with a readable `detail` message |
+| `top_k=50` or no file | `422` (FastAPI validation) |
+| Single-image latency | 4–20 ms when warm. The first request after startup or a pause can take 100–400 ms while MPS warms up |
+
+The one miss is a good demo moment. `082_class41.png` ("End of no passing") is predicted as "No passing" with only 53% confidence, which is below the 0.6 threshold, so the API returns `is_confident: false` and the car doesn't act on it.
 
 ---
 
@@ -1473,7 +1488,7 @@ Roughly in order of how much they add to the project:
 - [x] Phase 2: `models/sign_cnn.pt` saved, validation accuracy above 98%
 - [x] Phase 3: `reports/metrics.json` shows test accuracy of at least 97%, confusion matrix reviewed
 - [x] Phase 3: `data/samples/` populated
-- [ ] Phase 4: `/docs` works and `/predict` returns the right label for a sample
+- [x] Phase 4: `/docs` works and `/predict` returns the right label for a sample
 - [ ] Phase 5: all four Streamlit tabs work end to end
 - [ ] Phase 6: `pytest` passes
 - [ ] Demo rehearsed with the script in section 10
