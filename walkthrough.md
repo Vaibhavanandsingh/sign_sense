@@ -77,6 +77,7 @@ sign_sense/
 │   ├── signs.py              # class -> category / driving action
 │   ├── utils.py              # device selection
 │   ├── data.py               # datasets, transforms, dataloaders
+│   ├── check_data.py         # sanity check for the data pipeline
 │   ├── model.py              # SignNet CNN
 │   ├── train.py              # training loop -> models/sign_cnn.pt
 │   ├── evaluate.py           # test metrics -> reports/
@@ -162,8 +163,8 @@ data/
 ### About GTSRB
 
 - 43 classes: speed limits, prohibitions, warnings, mandatory directions, stop, yield, and more.
-- About 39k training images and 12.6k test images. Images range from 15×15 to 250×250 pixels.
-- The classes are **imbalanced**. "Speed limit 50" has about 2,000 training images, while "Speed limit 20" has about 200.
+- 26,640 training images (the cleaned version torchvision downloads) and 12,630 test images. Images range from 15×15 to 250×250 pixels.
+- The classes are **imbalanced**: the largest classes have 1,500 training images, the smallest only 150.
 - The training set is made of **tracks**: about 30 consecutive frames of the same physical sign. A random train/validation split therefore puts near-duplicate images on both sides, so validation accuracy comes out optimistic. **Report the test-set number** as your real result.
 
 ### `ml/config.py`
@@ -352,7 +353,46 @@ def get_test_loader(batch_size: int = 256, num_workers: int = 2) -> DataLoader:
     return _loader(test_ds, batch_size, False, num_workers)
 ```
 
-The first run downloads about 350 MB into `data/gtsrb/`. Later runs reuse it.
+The first run downloads about 280 MB into `data/gtsrb/` (about 700 MB once extracted). Later runs reuse it.
+
+### `ml/check_data.py` — verify the pipeline
+
+```python
+from collections import Counter
+
+from ml.config import IMG_SIZE, NUM_CLASSES
+from ml.data import get_dataloaders, get_test_loader
+from ml.utils import get_device
+
+
+def main() -> None:
+    print(f"device: {get_device()}")
+    train_loader, val_loader = get_dataloaders()
+    test_loader = get_test_loader()
+
+    for name, loader in [("train", train_loader), ("val", val_loader), ("test", test_loader)]:
+        images, labels = next(iter(loader))
+        print(f"{name:<5} {len(loader.dataset):>6} images | batch {tuple(images.shape)} | "
+              f"labels {labels.min().item()}-{labels.max().item()} | "
+              f"pixel mean {images.mean():+.3f} std {images.std():.3f}")
+        assert images.shape[1:] == (3, IMG_SIZE, IMG_SIZE)
+
+    counts = Counter(label for _, label in train_loader.dataset.dataset._samples)
+    assert len(counts) == NUM_CLASSES
+    print(f"classes {len(counts)} | smallest {min(counts.values())} | largest {max(counts.values())} images")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+```bash
+python -m ml.check_data
+```
+
+Expected output: batches of shape `(128, 3, 48, 48)`, 23,976 / 2,664 / 12,630 train/val/test images, 43 classes, and a pixel mean near 0 with std near 1 (which confirms the `MEAN`/`STD` constants fit the data).
+
+Run it as a module (`python -m`), not by piping code into `python -`. On macOS, DataLoader workers start fresh processes that must re-import the main script from a file.
 
 ---
 
@@ -1342,7 +1382,7 @@ streamlit run frontend/app.py
 
 ### A 3-minute demo script
 
-1. **Model report tab.** "We trained a 1.5M-parameter CNN on 39k German traffic sign images. It reaches about 98% on 12.6k unseen test images." Show the confusion matrix and point out the speed-limit confusions.
+1. **Model report tab.** "We trained a 1.5M-parameter CNN on 26k German traffic sign images. It reaches about 98% on 12.6k unseen test images." Show the confusion matrix and point out the speed-limit confusions.
 2. **Classify tab, Test-set sample.** Pick a Stop sign. Show the label, confidence, top-k bars, and the vehicle action.
 3. **Classify tab, Upload.** Use a sign photo from Google Images, cropped tightly around the sign. Then try a non-sign image (a cat, say) and show the low-confidence warning. "The car refuses to act on uncertain inputs."
 4. **Classify tab, Camera.** Hold up a printed sign or a phone screen showing one.
@@ -1355,7 +1395,7 @@ streamlit run frontend/app.py
 
 | Symptom | Fix |
 | --- | --- |
-| `SSL: CERTIFICATE_VERIFY_FAILED` while downloading GTSRB | On a python.org install on macOS, run `/Applications/Python 3.13/Install Certificates.command` |
+| `SSL: CERTIFICATE_VERIFY_FAILED` while downloading GTSRB | On a python.org install on macOS, run `/Applications/Python 3.13/Install Certificates.command` once. Quick per-shell fix: `export SSL_CERT_FILE="$(python -m certifi)"` |
 | Download blocked or very slow | Download these three files manually and unzip them all into `data/gtsrb/`: `GTSRB-Training_fixed.zip`, `GTSRB_Final_Test_Images.zip`, and `GTSRB_Final_Test_GT.zip` from `https://sid.erda.dk/public/archives/daaeac0d7ce1152aea9b61d9f1e19370/` |
 | DataLoader hangs or errors about worker processes | `python -m ml.train --num-workers 0` |
 | Errors from the MPS (Apple GPU) backend | `DEVICE=cpu python -m ml.train` (the same variable works for `uvicorn`) |
@@ -1383,8 +1423,8 @@ Roughly in order of how much they add to the project:
 
 ## 13. Milestone checklist
 
-- [ ] Phase 0: venv created, dependencies installed, MPS/CUDA detected
-- [ ] Phase 1: GTSRB downloads, and a batch from the dataloader has shape `[128, 3, 48, 48]`
+- [x] Phase 0: venv created, dependencies installed, MPS/CUDA detected
+- [x] Phase 1: GTSRB downloads, and a batch from the dataloader has shape `[128, 3, 48, 48]`
 - [ ] Phase 2: `models/sign_cnn.pt` saved, validation accuracy above 98%
 - [ ] Phase 3: `reports/metrics.json` shows test accuracy of at least 97%, confusion matrix reviewed
 - [ ] Phase 3: `data/samples/` populated
