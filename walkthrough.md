@@ -570,6 +570,18 @@ python -m ml.train --epochs 1
 
 Expect validation accuracy above 99% after a few epochs (it's inflated by the track leakage described in Phase 1). Depending on your hardware, a full run takes somewhere between a few minutes and about 20 minutes.
 
+Reference run (Apple Silicon, MPS, 15 epochs, about 8 minutes, roughly 30–40 s per epoch):
+
+| Epoch | Train acc | Val acc |
+| --- | --- | --- |
+| 1 | 23.0% | 43.7% |
+| 4 | 77.2% | 96.1% |
+| 8 | 92.8% | 99.6% |
+| 12 (best, saved) | 95.9% | 99.96% |
+| 15 | 96.2% | 99.96% |
+
+Training accuracy staying *below* validation accuracy is expected: training images are augmented and pass through dropout, while validation images are clean. The resulting `models/sign_cnn.pt` is about 6 MB and is committed to the repo so the demo runs without retraining.
+
 ---
 
 ## 6. Phase 3 — Evaluation and demo samples
@@ -1425,7 +1437,7 @@ Roughly in order of how much they add to the project:
 
 - [x] Phase 0: venv created, dependencies installed, MPS/CUDA detected
 - [x] Phase 1: GTSRB downloads, and a batch from the dataloader has shape `[128, 3, 48, 48]`
-- [ ] Phase 2: `models/sign_cnn.pt` saved, validation accuracy above 98%
+- [x] Phase 2: `models/sign_cnn.pt` saved, validation accuracy above 98%
 - [ ] Phase 3: `reports/metrics.json` shows test accuracy of at least 97%, confusion matrix reviewed
 - [ ] Phase 3: `data/samples/` populated
 - [ ] Phase 4: `/docs` works and `/predict` returns the right label for a sample
