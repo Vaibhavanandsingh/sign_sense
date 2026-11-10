@@ -90,7 +90,8 @@ sign_sense/
 ├── frontend/
 │   └── app.py                # Streamlit UI
 ├── tests/
-│   └── test_api.py
+│   ├── test_api.py           # endpoint tests with a dummy model
+│   └── test_ml.py            # sign rules, model shape, trained-model check
 ├── data/                     # gtsrb/ is gitignored, samples/ is tracked
 ├── models/                   # trained checkpoint
 └── reports/                  # metrics and plots
@@ -128,7 +129,10 @@ streamlit>=1.40
 requests>=2.32
 pytest>=8.0
 httpx>=0.27
+httpx2>=2.16
 ```
+
+`httpx` and `httpx2` are only used by FastAPI's `TestClient`. Recent Starlette versions prefer `httpx2` and warn when only `httpx` is present, while older versions need `httpx`, so both are listed.
 
 ```bash
 pip install --upgrade pip
@@ -1342,13 +1346,17 @@ The speed and limit line chart at the end of a drive makes a good visual for a p
 
 ## 9. Phase 6 — Tests
 
-### `tests/test_api.py`
+There are two test files:
 
-These tests use a randomly initialized model, so they run in seconds and don't need GTSRB or a trained checkpoint.
+- `tests/test_api.py` tests every endpoint, including the error cases, against a **randomly initialized** model saved to a temp folder. It needs neither GTSRB nor a trained checkpoint and runs in seconds.
+- `tests/test_ml.py` tests the model's output shape and the sign rules in `ml/signs.py`, plus a regression check that the **real trained checkpoint** still predicts the committed Stop and 50 km/h demo samples correctly. That last check is skipped automatically if `models/sign_cnn.pt` is missing.
+
+`pytest.MonkeyPatch.context()` sets `MODEL_PATH` and `DEVICE` only while the API fixture is active, so the dummy model never leaks into other tests.
+
+### `tests/test_api.py`
 
 ```python
 import io
-import os
 
 import pytest
 import torch
@@ -1373,12 +1381,13 @@ def client(tmp_path_factory):
         },
         checkpoint,
     )
-    os.environ["MODEL_PATH"] = str(checkpoint)
-    os.environ["DEVICE"] = "cpu"
-    from backend.main import app
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("MODEL_PATH", str(checkpoint))
+        mp.setenv("DEVICE", "cpu")
+        from backend.main import app
 
-    with TestClient(app) as test_client:
-        yield test_client
+        with TestClient(app) as test_client:
+            yield test_client
 
 
 def png_bytes(color=(200, 30, 30)) -> bytes:
@@ -1391,6 +1400,7 @@ def test_health(client):
     body = client.get("/health").json()
     assert body["status"] == "ok"
     assert body["model_loaded"] is True
+    assert body["device"] == "cpu"
 
 
 def test_classes(client):
@@ -1400,31 +1410,115 @@ def test_classes(client):
     assert classes[14]["category"] == "stop"
 
 
+def test_model_info(client):
+    info = client.get("/model/info").json()
+    assert info["num_classes"] == 43
+    assert info["img_size"] == IMG_SIZE
+    assert info["num_parameters"] > 0
+
+
 def test_predict_returns_ranked_top_k(client):
     response = client.post("/predict", files={"file": ("red.png", png_bytes(), "image/png")},
                            params={"top_k": 3})
     assert response.status_code == 200
     body = response.json()
+    assert body["filename"] == "red.png"
     assert len(body["top_k"]) == 3
     confidences = [item["confidence"] for item in body["top_k"]]
     assert confidences == sorted(confidences, reverse=True)
+    assert body["class_id"] == body["top_k"][0]["class_id"]
     assert 0.0 <= body["confidence"] <= 1.0
+
+
+def test_untrained_model_is_not_confident(client):
+    body = client.post("/predict", files={"file": ("red.png", png_bytes(), "image/png")}).json()
+    assert body["is_confident"] is False
 
 
 def test_predict_rejects_non_image(client):
     response = client.post("/predict", files={"file": ("notes.txt", b"hello", "text/plain")})
     assert response.status_code == 400
+    assert "not a valid image" in response.json()["detail"]
+
+
+def test_predict_rejects_empty_file(client):
+    response = client.post("/predict", files={"file": ("empty.png", b"", "image/png")})
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize("top_k", [0, 11])
+def test_predict_rejects_out_of_range_top_k(client, top_k):
+    response = client.post("/predict", files={"file": ("red.png", png_bytes(), "image/png")},
+                           params={"top_k": top_k})
+    assert response.status_code == 422
 
 
 def test_batch(client):
     files = [("files", (f"{i}.png", png_bytes((i * 40, 80, 120)), "image/png")) for i in range(4)]
     body = client.post("/predict/batch", files=files).json()
-    assert len(body["predictions"]) == 4
+    assert [p["filename"] for p in body["predictions"]] == ["0.png", "1.png", "2.png", "3.png"]
+
+
+def test_batch_rejects_more_than_32_images(client):
+    files = [("files", (f"{i}.png", png_bytes(), "image/png")) for i in range(33)]
+    response = client.post("/predict/batch", files=files)
+    assert response.status_code == 400
+```
+
+### `tests/test_ml.py`
+
+```python
+import pytest
+import torch
+from PIL import Image
+
+from ml.config import CHECKPOINT_PATH, CLASS_NAMES, IMG_SIZE, NUM_CLASSES, SAMPLES_DIR
+from ml.model import SignNet
+from ml.signs import describe
+
+
+def test_model_output_shape():
+    logits = SignNet(NUM_CLASSES, IMG_SIZE)(torch.randn(2, 3, IMG_SIZE, IMG_SIZE))
+    assert logits.shape == (2, NUM_CLASSES)
+
+
+def test_every_class_has_a_known_category():
+    assert len(CLASS_NAMES) == NUM_CLASSES
+    for class_id in range(NUM_CLASSES):
+        assert describe(class_id)["category"] != "other", CLASS_NAMES[class_id]
+
+
+@pytest.mark.parametrize("class_id, limit", [(0, 20), (1, 30), (2, 50), (7, 100), (8, 120)])
+def test_speed_limits(class_id, limit):
+    info = describe(class_id)
+    assert info["category"] == "speed_limit"
+    assert info["speed_limit_kmh"] == limit
+
+
+def test_only_speed_limit_signs_set_a_speed():
+    for class_id in range(NUM_CLASSES):
+        info = describe(class_id)
+        assert (info["speed_limit_kmh"] is not None) == (info["category"] == "speed_limit")
+
+
+@pytest.mark.skipif(not CHECKPOINT_PATH.exists(), reason="trained checkpoint not available")
+@pytest.mark.parametrize("sample, expected", [("028_class14.png", "Stop"),
+                                              ("004_class02.png", "Speed limit (50km/h)")])
+def test_trained_model_on_demo_samples(monkeypatch, sample, expected):
+    from backend.inference import SignClassifier
+
+    monkeypatch.setenv("DEVICE", "cpu")
+    classifier = SignClassifier(CHECKPOINT_PATH)
+    class_id, confidence = classifier.predict([Image.open(SAMPLES_DIR / sample).convert("RGB")], top_k=1)[0][0]
+    assert classifier.class_names[class_id] == expected
+    assert confidence > 0.9
 ```
 
 ```bash
 python -m pytest -v
 ```
+
+Reference run: **21 passed in about 3 s**, with no warnings once `httpx2` is installed.
 
 ---
 
@@ -1504,5 +1598,5 @@ Roughly in order of how much they add to the project:
 - [x] Phase 3: `data/samples/` populated
 - [x] Phase 4: `/docs` works and `/predict` returns the right label for a sample
 - [x] Phase 5: all four Streamlit tabs work end to end
-- [ ] Phase 6: `pytest` passes
+- [x] Phase 6: `pytest` passes
 - [ ] Demo rehearsed with the script in section 10
