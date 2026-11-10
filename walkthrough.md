@@ -1120,9 +1120,10 @@ def render_prediction(data: bytes, result: dict) -> None:
         headline = f"**{result['label']}** ({result['confidence']:.1%})"
         if result["is_confident"]:
             st.success(headline)
+            st.info(f"Vehicle action: {result['action']}")
         else:
             st.warning(f"Low confidence: {headline}. The vehicle should treat this as an unknown sign.")
-        st.info(f"Vehicle action: {result['action']}")
+            st.info("Vehicle action: keep current behaviour until the sign is confirmed")
         st.caption(f"Category: {result['category']} | Inference: {result['inference_ms']:.1f} ms")
         st.dataframe(
             pd.DataFrame(result["top_k"]),
@@ -1248,8 +1249,8 @@ with drive_tab:
                 with frame.container():
                     img_col, sign_col, speed_col, limit_col = st.columns([1, 2, 1, 1])
                     img_col.image(to_display(data, 160))
-                    sign_col.metric("Detected sign", result["label"],
-                                    f"{result['confidence']:.0%} confidence", delta_color="off")
+                    sign_col.metric("Detected sign", result["label"])
+                    sign_col.caption(f"{result['confidence']:.0%} confidence")
                     speed_col.metric("Speed", f"{speed} km/h")
                     limit_col.metric("Limit", f"{limit} km/h")
                     st.info(f"Decision: {decision}")
@@ -1282,7 +1283,7 @@ with model_tab:
     else:
         metrics = info.get("test_metrics") or {}
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Architecture", info["architecture"])
+        c1.metric("Architecture", info["architecture"].split(" (")[0], help=info["architecture"])
         c2.metric("Parameters", f"{info['num_parameters']:,}")
         c3.metric("Val accuracy", f"{info['val_accuracy']:.2%}" if info["val_accuracy"] else "n/a")
         c4.metric("Test accuracy", f"{metrics['test_accuracy']:.2%}" if metrics else "run ml.evaluate")
@@ -1307,6 +1308,19 @@ streamlit run frontend/app.py
 ```
 
 Open <http://localhost:8501>. The frontend only talks to the backend over HTTP; it reads `data/samples/` and `reports/` from disk purely for display. To point it at a backend on another machine, set `API_URL=http://<host>:8000`.
+
+What each tab should show (reference run):
+
+| Tab | Result |
+| --- | --- |
+| Sidebar | "API online, model on mps". With a wrong API URL it shows "Cannot reach the API at …" and stops rendering |
+| Classify, sample `000_class00.png` | Speed limit (20km/h) at 100%, "Set target speed to 20 km/h", top-5 bars, ground truth marked correct |
+| Classify, sample `082_class41.png` | Yellow low-confidence warning (No passing, 53.4%), action "keep current behaviour until the sign is confirmed", ground truth marked wrong |
+| Batch, 12 random samples | Image grid with labels and confidences, about 600 ms for the batch, plus a results table |
+| Drive simulation, 12 signs | Live dashboard per sign, then route accuracy (92% in the reference run), the speed/limit chart, and the log |
+| Model report | SignNet, 1,478,411 parameters, 99.96% val, 98.80% test, training curves, confusion matrix, hardest classes |
+
+When a prediction is uncertain, both the Classify tab and the drive planner deliberately ignore it. In the reference drive, step 7 was the 53% "No passing" and the car stayed at 50 km/h instead of acting on it.
 
 ### How the drive-simulation planner works
 
@@ -1489,6 +1503,6 @@ Roughly in order of how much they add to the project:
 - [x] Phase 3: `reports/metrics.json` shows test accuracy of at least 97%, confusion matrix reviewed
 - [x] Phase 3: `data/samples/` populated
 - [x] Phase 4: `/docs` works and `/predict` returns the right label for a sample
-- [ ] Phase 5: all four Streamlit tabs work end to end
+- [x] Phase 5: all four Streamlit tabs work end to end
 - [ ] Phase 6: `pytest` passes
 - [ ] Demo rehearsed with the script in section 10
