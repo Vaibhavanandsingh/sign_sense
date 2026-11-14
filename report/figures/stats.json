@@ -1,0 +1,451 @@
+{
+  "class_counts": {
+    "train": [
+      150,
+      1500,
+      1500,
+      960,
+      1320,
+      1260,
+      300,
+      960,
+      960,
+      990,
+      1350,
+      900,
+      1410,
+      1440,
+      540,
+      420,
+      300,
+      750,
+      810,
+      150,
+      240,
+      240,
+      270,
+      360,
+      180,
+      1020,
+      420,
+      180,
+      360,
+      180,
+      300,
+      540,
+      180,
+      480,
+      300,
+      810,
+      270,
+      150,
+      1380,
+      210,
+      240,
+      180,
+      180
+    ],
+    "test": [
+      60,
+      720,
+      750,
+      450,
+      660,
+      630,
+      150,
+      450,
+      450,
+      480,
+      660,
+      420,
+      690,
+      720,
+      270,
+      210,
+      150,
+      360,
+      390,
+      60,
+      90,
+      90,
+      120,
+      150,
+      90,
+      480,
+      180,
+      60,
+      150,
+      90,
+      150,
+      270,
+      60,
+      210,
+      120,
+      390,
+      120,
+      60,
+      690,
+      90,
+      90,
+      60,
+      90
+    ]
+  },
+  "layers": [
+    {
+      "name": "features.0.0",
+      "type": "Conv2d",
+      "shape": [
+        32,
+        48,
+        48
+      ],
+      "params": 864
+    },
+    {
+      "name": "features.0.1",
+      "type": "BatchNorm2d",
+      "shape": [
+        32,
+        48,
+        48
+      ],
+      "params": 64
+    },
+    {
+      "name": "features.0.2",
+      "type": "ReLU",
+      "shape": [
+        32,
+        48,
+        48
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.0.3",
+      "type": "Conv2d",
+      "shape": [
+        32,
+        48,
+        48
+      ],
+      "params": 9216
+    },
+    {
+      "name": "features.0.4",
+      "type": "BatchNorm2d",
+      "shape": [
+        32,
+        48,
+        48
+      ],
+      "params": 64
+    },
+    {
+      "name": "features.0.5",
+      "type": "ReLU",
+      "shape": [
+        32,
+        48,
+        48
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.0.6",
+      "type": "MaxPool2d",
+      "shape": [
+        32,
+        24,
+        24
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.0.7",
+      "type": "Dropout",
+      "shape": [
+        32,
+        24,
+        24
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.1.0",
+      "type": "Conv2d",
+      "shape": [
+        64,
+        24,
+        24
+      ],
+      "params": 18432
+    },
+    {
+      "name": "features.1.1",
+      "type": "BatchNorm2d",
+      "shape": [
+        64,
+        24,
+        24
+      ],
+      "params": 128
+    },
+    {
+      "name": "features.1.2",
+      "type": "ReLU",
+      "shape": [
+        64,
+        24,
+        24
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.1.3",
+      "type": "Conv2d",
+      "shape": [
+        64,
+        24,
+        24
+      ],
+      "params": 36864
+    },
+    {
+      "name": "features.1.4",
+      "type": "BatchNorm2d",
+      "shape": [
+        64,
+        24,
+        24
+      ],
+      "params": 128
+    },
+    {
+      "name": "features.1.5",
+      "type": "ReLU",
+      "shape": [
+        64,
+        24,
+        24
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.1.6",
+      "type": "MaxPool2d",
+      "shape": [
+        64,
+        12,
+        12
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.1.7",
+      "type": "Dropout",
+      "shape": [
+        64,
+        12,
+        12
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.2.0",
+      "type": "Conv2d",
+      "shape": [
+        128,
+        12,
+        12
+      ],
+      "params": 73728
+    },
+    {
+      "name": "features.2.1",
+      "type": "BatchNorm2d",
+      "shape": [
+        128,
+        12,
+        12
+      ],
+      "params": 256
+    },
+    {
+      "name": "features.2.2",
+      "type": "ReLU",
+      "shape": [
+        128,
+        12,
+        12
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.2.3",
+      "type": "Conv2d",
+      "shape": [
+        128,
+        12,
+        12
+      ],
+      "params": 147456
+    },
+    {
+      "name": "features.2.4",
+      "type": "BatchNorm2d",
+      "shape": [
+        128,
+        12,
+        12
+      ],
+      "params": 256
+    },
+    {
+      "name": "features.2.5",
+      "type": "ReLU",
+      "shape": [
+        128,
+        12,
+        12
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.2.6",
+      "type": "MaxPool2d",
+      "shape": [
+        128,
+        6,
+        6
+      ],
+      "params": 0
+    },
+    {
+      "name": "features.2.7",
+      "type": "Dropout",
+      "shape": [
+        128,
+        6,
+        6
+      ],
+      "params": 0
+    },
+    {
+      "name": "classifier.0",
+      "type": "Flatten",
+      "shape": [
+        4608
+      ],
+      "params": 0
+    },
+    {
+      "name": "classifier.1",
+      "type": "Linear",
+      "shape": [
+        256
+      ],
+      "params": 1179904
+    },
+    {
+      "name": "classifier.2",
+      "type": "ReLU",
+      "shape": [
+        256
+      ],
+      "params": 0
+    },
+    {
+      "name": "classifier.3",
+      "type": "Dropout",
+      "shape": [
+        256
+      ],
+      "params": 0
+    },
+    {
+      "name": "classifier.4",
+      "type": "Linear",
+      "shape": [
+        43
+      ],
+      "params": 11051
+    }
+  ],
+  "top_confusions": [
+    {
+      "true": "Speed limit (120km/h)",
+      "true_id": 8,
+      "pred": "Speed limit (80km/h)",
+      "pred_id": 5,
+      "count": 16
+    },
+    {
+      "true": "Double curve",
+      "true_id": 21,
+      "pred": "Dangerous curve to the left",
+      "pred_id": 19,
+      "count": 14
+    },
+    {
+      "true": "Bumpy road",
+      "true_id": 22,
+      "pred": "Road work",
+      "pred_id": 25,
+      "count": 11
+    },
+    {
+      "true": "Priority road",
+      "true_id": 12,
+      "pred": "Yield",
+      "pred_id": 13,
+      "count": 9
+    },
+    {
+      "true": "End of speed limit (80km/h)",
+      "true_id": 6,
+      "pred": "Keep right",
+      "pred_id": 38,
+      "count": 9
+    },
+    {
+      "true": "General caution",
+      "true_id": 18,
+      "pred": "Traffic signals",
+      "pred_id": 26,
+      "count": 8
+    },
+    {
+      "true": "Keep right",
+      "true_id": 38,
+      "pred": "Roundabout mandatory",
+      "pred_id": 40,
+      "count": 6
+    },
+    {
+      "true": "Beware of ice/snow",
+      "true_id": 30,
+      "pred": "Right-of-way at the next intersection",
+      "pred_id": 11,
+      "count": 6
+    }
+  ],
+  "api": {
+    "num_samples": 86,
+    "correct": 85,
+    "misses": [
+      {
+        "file": "082_class41.png",
+        "truth": "End of no passing",
+        "pred": "No passing",
+        "confidence": 0.5337,
+        "is_confident": false
+      }
+    ],
+    "median_ms": 3.31,
+    "p95_ms": 6.04,
+    "max_ms": 7.09,
+    "batch12_total_ms": 382.22
+  }
+}
